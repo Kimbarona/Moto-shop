@@ -8,6 +8,7 @@ use App\Models\Brand;
 use App\Models\Category;
 use App\Models\Customer;
 use App\Models\CustomerMotorcycle;
+use App\Models\DefectiveStock;
 use App\Models\ExpenseCategory;
 use App\Models\Mechanic;
 use App\Models\MotorcycleMake;
@@ -16,12 +17,19 @@ use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Service;
 use App\Models\ServicePackage;
+use App\Models\StockAdjustment;
+use App\Models\StockCount;
+use App\Models\StockMovement;
+use App\Models\StockReceiving;
 use App\Models\Supplier;
 use App\Models\Unit;
 use App\Models\User;
 use App\Policies\ActivityPolicy;
 use App\Policies\AdminMasterDataPolicy;
+use App\Policies\DefectiveStockPolicy;
+use App\Policies\InventoryDocumentPolicy;
 use App\Policies\MasterDataPolicy;
+use App\Policies\StockMovementPolicy;
 use App\Settings\SecuritySettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
@@ -99,6 +107,13 @@ class AppServiceProvider extends ServiceProvider
         foreach ([Service::class, ServicePackage::class, Mechanic::class, PaymentMethod::class, ExpenseCategory::class] as $model) {
             Gate::policy($model, AdminMasterDataPolicy::class);
         }
+
+        foreach ([StockReceiving::class, StockAdjustment::class, StockCount::class] as $model) {
+            Gate::policy($model, InventoryDocumentPolicy::class);
+        }
+
+        Gate::policy(DefectiveStock::class, DefectiveStockPolicy::class);
+        Gate::policy(StockMovement::class, StockMovementPolicy::class);
 
         $roles = fn (Role ...$roles) => fn (User $user) => $user->is_active && $user->hasRole(...$roles);
 

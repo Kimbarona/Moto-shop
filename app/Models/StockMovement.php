@@ -51,4 +51,24 @@ class StockMovement extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    /**
+     * Human document number of whatever caused this movement ("RCV-000003", "ORD-000120"…).
+     */
+    public function referenceLabel(): ?string
+    {
+        $reference = $this->reference;
+
+        if ($reference === null) {
+            return null;
+        }
+
+        foreach (['slip_no', 'return_no', 'order_no', 'receiving_no', 'adjustment_no', 'count_no'] as $attribute) {
+            if (filled($reference->getAttribute($attribute))) {
+                return $reference->getAttribute($attribute);
+            }
+        }
+
+        return class_basename($reference).' #'.$reference->getKey();
+    }
 }

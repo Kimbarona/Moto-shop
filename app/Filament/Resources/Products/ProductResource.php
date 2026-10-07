@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Products;
 use App\Filament\Resources\Products\Pages\CreateProduct;
 use App\Filament\Resources\Products\Pages\EditProduct;
 use App\Filament\Resources\Products\Pages\ListProducts;
+use App\Filament\Resources\Products\RelationManagers\StockCardRelationManager;
 use App\Models\MotorcycleModel;
 use App\Models\Product;
 use App\Settings\InventorySettings;
@@ -189,6 +190,28 @@ class ProductResource extends Resource
             ]);
     }
 
+    /**
+     * Search-as-you-type part picker used by inventory documents.
+     */
+    public static function productSelect(string $name = 'product_id'): Select
+    {
+        return Select::make($name)
+            ->label('Part')
+            ->searchable()
+            ->required()
+            ->getSearchResultsUsing(fn (string $search) => Product::query()->active()->search($search)
+                ->with('unit')->orderBy('name')->limit(50)->get()
+                ->mapWithKeys(fn (Product $product) => [$product->id => static::productLabel($product)]))
+            ->getOptionLabelUsing(fn ($value) => ($product = Product::withTrashed()->with('unit')->find($value))
+                ? static::productLabel($product)
+                : null);
+    }
+
+    public static function productLabel(Product $product): string
+    {
+        return sprintf('%s · %s (on hand %s %s)', $product->sku, $product->name, rtrim(rtrim(number_format((float) $product->qty_on_hand, 2), '0'), '.'), $product->unit?->abbreviation);
+    }
+
     public static function marginLabel(float $srp, float $cost): string
     {
         if ($srp <= 0) {
@@ -226,6 +249,13 @@ class ProductResource extends Resource
             ->groupBy(fn (MotorcycleModel $model) => $model->make?->name ?? 'Other')
             ->map(fn ($models) => $models->pluck('name', 'id')->all())
             ->all();
+    }
+
+    public static function getRelations(): array
+    {
+        return [
+            StockCardRelationManager::class,
+        ];
     }
 
     public static function getEloquentQuery(): Builder

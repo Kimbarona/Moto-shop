@@ -1,9 +1,12 @@
 <?php
 
 use App\Enums\Role;
+use App\Models\Product;
+use App\Models\Unit;
 use App\Models\User;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Tests\TestCase;
 
 /*
@@ -45,4 +48,16 @@ function mechanicUser(array $attributes = []): User
 function clerk(array $attributes = []): User
 {
     return userWithRole(Role::InventoryClerk, $attributes);
+}
+
+function stockProduct(array $attributes = []): Product
+{
+    $unit = Unit::firstOrCreate(['abbreviation' => 'pc'], ['name' => 'Piece']);
+
+    return Product::create(['name' => 'Oil Filter', 'unit_id' => $unit->id, 'srp' => 180, 'avg_cost' => 0, ...$attributes]);
+}
+
+function stockTx(callable $callback): mixed
+{
+    return DB::transaction($callback);
 }

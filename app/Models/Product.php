@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Models\Concerns\LogsChanges;
 use App\Services\Numbering\SequenceService;
+use App\Services\Stock\StockService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -11,6 +12,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\DB;
+use LogicException;
 
 /**
  * A part. qty_on_hand is a cache of the stock ledger and is deliberately NOT fillable:
@@ -54,6 +56,12 @@ class Product extends Model
         static::creating(function (Product $product) {
             if (blank($product->sku)) {
                 $product->sku = app(SequenceService::class)->next('sku');
+            }
+        });
+
+        static::updating(function (Product $product) {
+            if ($product->isDirty('qty_on_hand') && ! StockService::isWriting()) {
+                throw new LogicException('qty_on_hand can only be changed through StockService.');
             }
         });
     }

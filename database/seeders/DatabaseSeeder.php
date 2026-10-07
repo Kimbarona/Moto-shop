@@ -13,6 +13,7 @@ class DatabaseSeeder extends Seeder
             MasterlistSeeder::class,
             CatalogSeeder::class,
             OpeningStockSeeder::class,
+            TransactionSeeder::class,
         ]);
     }
 }

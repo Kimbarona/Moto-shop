@@ -8,6 +8,7 @@ use App\Models\Supplier;
 use App\Models\User;
 use App\Services\Stock\ReceivingService;
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Date;
 
 /**
  * Opening stock posted through Stock In (so the ledger and average costs are real).
@@ -50,6 +51,13 @@ class OpeningStockSeeder extends Seeder
             'notes' => 'Opening stock',
         ], $lines, $user);
 
-        $service->post($receiving, $user);
+        // Post it 30 days back so the stock card reads in order (stock in before sales).
+        Date::setTestNow(now()->subDays(30)->setTime(8, 0));
+
+        try {
+            $service->post($receiving, $user);
+        } finally {
+            Date::setTestNow();
+        }
     }
 }

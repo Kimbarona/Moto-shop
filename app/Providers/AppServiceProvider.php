@@ -13,6 +13,7 @@ use App\Models\ExpenseCategory;
 use App\Models\Mechanic;
 use App\Models\MotorcycleMake;
 use App\Models\MotorcycleModel;
+use App\Models\Order;
 use App\Models\PaymentMethod;
 use App\Models\Product;
 use App\Models\Service;
@@ -29,6 +30,7 @@ use App\Policies\AdminMasterDataPolicy;
 use App\Policies\DefectiveStockPolicy;
 use App\Policies\InventoryDocumentPolicy;
 use App\Policies\MasterDataPolicy;
+use App\Policies\OrderPolicy;
 use App\Policies\StockMovementPolicy;
 use App\Settings\SecuritySettings;
 use Carbon\CarbonImmutable;
@@ -114,6 +116,7 @@ class AppServiceProvider extends ServiceProvider
 
         Gate::policy(DefectiveStock::class, DefectiveStockPolicy::class);
         Gate::policy(StockMovement::class, StockMovementPolicy::class);
+        Gate::policy(Order::class, OrderPolicy::class);
 
         $roles = fn (Role ...$roles) => fn (User $user) => $user->is_active && $user->hasRole(...$roles);
 

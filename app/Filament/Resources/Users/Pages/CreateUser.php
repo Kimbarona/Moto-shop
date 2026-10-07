@@ -1,0 +1,26 @@
+<?php
+
+namespace App\Filament\Resources\Users\Pages;
+
+use App\Filament\Concerns\CallsServices;
+use App\Filament\Resources\Users\UserResource;
+use App\Services\Users\UserManagementService;
+use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Database\Eloquent\Model;
+
+class CreateUser extends CreateRecord
+{
+    use CallsServices;
+
+    protected static string $resource = UserResource::class;
+
+    protected function handleRecordCreation(array $data): Model
+    {
+        return $this->callService(fn () => app(UserManagementService::class)->create(auth()->user(), $data));
+    }
+
+    protected function getRedirectUrl(): string
+    {
+        return $this->getResource()::getUrl('index');
+    }
+}

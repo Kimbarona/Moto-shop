@@ -182,6 +182,7 @@ export type Order = {
         discount: boolean;
         pay: boolean;
         void: boolean;
+        return: boolean;
         serviceStatus: boolean;
     };
 };
@@ -201,4 +202,97 @@ export type OrderCard = {
     total: number;
     created_at: string | null;
     done_at: string | null;
+};
+
+/* ---------------------------------------------------------------- returns */
+
+export type Disposition = 'back_to_stock' | 'defective';
+export type Resolution = 'refund' | 'exchange';
+export type Option = { value: string; label: string };
+
+/** Search hit on /returns/new. */
+export type ReturnableOrderHit = {
+    id: number;
+    slip_no: string;
+    order_no: string;
+    type: 'walk_in' | 'service';
+    paid_at: string | null;
+    customer: string | null;
+    plate_no: string | null;
+    model: string | null;
+    items_count: number;
+    total: number;
+    refund_status: 'none' | 'partial' | 'full';
+};
+
+export type ReturnableLine = {
+    id: number;
+    line_type: LineType;
+    description: string;
+    sku: string | null;
+    unit: string | null;
+    allows_decimal: boolean;
+    qty: number;
+    qty_returned: number;
+    returnable: number;
+    net: number;
+    returned_amount: number;
+    unit_net: number;
+    remaining_amount: number;
+};
+
+/** A paid order as the Returns screen sees it (never contains cost). */
+export type ReturnableOrder = {
+    id: number;
+    slip_no: string;
+    order_no: string;
+    type: 'walk_in' | 'service';
+    paid_at: string | null;
+    cashier: string | null;
+    customer: { id: number; name: string; mobile: string | null } | null;
+    motorcycle: {
+        id: number;
+        plate_no: string | null;
+        model: string | null;
+    } | null;
+    total: number;
+    refund_status: 'none' | 'partial' | 'full';
+    items: ReturnableLine[];
+    returns: {
+        id: number;
+        return_no: string;
+        date: string | null;
+        resolution: Resolution;
+        return_total: number;
+    }[];
+};
+
+export type ReturnSummary = {
+    id: number;
+    return_no: string;
+    date: string | null;
+    order_id: number;
+    slip_no: string | null;
+    customer: string | null;
+    reason: string;
+    resolution: Resolution;
+    return_total: number;
+    refund_amount: number;
+    exchange_order: { id: number; slip_no: string | null } | null;
+    credit_available: boolean;
+};
+
+/** Unused exchange credit carried into a new walk-in sale (/pos?exchange=ID). */
+export type ExchangeCredit = {
+    id: number;
+    return_no: string;
+    slip_no: string | null;
+    credit: number;
+    customer: { id: number; name: string; mobile: string | null } | null;
+    motorcycle: {
+        id: number;
+        plate_no: string | null;
+        model: string | null;
+        model_id: number | null;
+    } | null;
 };

@@ -16,30 +16,6 @@ beforeEach(function () {
     $this->actingAs($this->cashierUser);
 });
 
-/**
- * Recursively collect every key in a JSON payload.
- *
- * @return list<string>
- */
-function allKeys(mixed $data): array
-{
-    if (! is_array($data)) {
-        return [];
-    }
-
-    $keys = [];
-
-    foreach ($data as $key => $value) {
-        if (is_string($key)) {
-            $keys[] = $key;
-        }
-
-        $keys = [...$keys, ...allKeys($value)];
-    }
-
-    return $keys;
-}
-
 describe('cost & profit never reach cashiers or mechanics', function () {
     it('keeps cost out of the product search for everyone', function () {
         $this->part(stock: 3, srp: 150, cost: 90);

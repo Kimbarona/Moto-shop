@@ -126,6 +126,7 @@ class OrderResource extends JsonResource
                 'discount' => $user->can('discount', $this->resource),
                 'pay' => $user->can('pay', $this->resource),
                 'void' => $user->can('void', $this->resource),
+                'return' => $user->can('return', $this->resource),
                 'serviceStatus' => $user->can('updateServiceStatus', $this->resource),
             ],
         ];

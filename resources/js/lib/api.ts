@@ -1,5 +1,12 @@
 import axios, { AxiosError } from 'axios';
-import type { Customer, Order, Product } from '@/types/pos';
+import type {
+    Customer,
+    Order,
+    Product,
+    ReturnableOrder,
+    ReturnableOrderHit,
+    ReturnSummary,
+} from '@/types/pos';
 
 /**
  * JSON client for the POS / Service Board. Laravel's XSRF-TOKEN cookie is sent back
@@ -154,6 +161,15 @@ export const api = {
         call<Order>(http.post(`/pos/api/orders/${id}/void`, payload)),
     checkout: (payload: Record<string, unknown>) =>
         call<Order>(http.post('/pos/api/checkout', payload)),
+
+    returnableOrders: (q: string) =>
+        call<ReturnableOrderHit[]>(
+            http.get('/pos/api/returns/orders', { params: { q } }),
+        ),
+    returnableOrder: (id: number) =>
+        call<ReturnableOrder>(http.get(`/pos/api/returns/orders/${id}`)),
+    createReturn: (payload: Record<string, unknown>) =>
+        call<ReturnSummary>(http.post('/pos/api/returns', payload)),
 };
 
 export const urls = {
@@ -166,6 +182,10 @@ export const urls = {
     customer: (id: number) => `/customers/${id}`,
     mySummary: '/my-summary',
     returns: '/returns/new',
+    returnFor: (orderId: number) => `/returns/new?order=${orderId}`,
+    exchange: (returnId: number) => `/pos?exchange=${returnId}`,
+    returnSlip: (returnId: number, reprint = false) =>
+        `/print/return-slip/${returnId}${reprint ? '?reprint=1' : ''}`,
     slip: (orderId: number, reprint = false) =>
         `/print/slip/${orderId}${reprint ? '?reprint=1' : ''}`,
     jobTicket: (orderId: number, reprint = false) =>

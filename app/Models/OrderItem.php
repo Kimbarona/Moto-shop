@@ -7,6 +7,7 @@ use App\Enums\LineType;
 use App\Models\Concerns\LogsChanges;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * An order line. description / original_price / unit_price are snapshots taken when the
@@ -88,6 +89,11 @@ class OrderItem extends Model
     public function mechanic(): BelongsTo
     {
         return $this->belongsTo(Mechanic::class)->withTrashed();
+    }
+
+    public function returnItems(): HasMany
+    {
+        return $this->hasMany(ReturnItem::class);
     }
 
     public function isPart(): bool

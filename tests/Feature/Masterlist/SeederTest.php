@@ -6,6 +6,7 @@ use App\Models\MotorcycleModel;
 use App\Models\Order;
 use App\Models\PaymentMethod;
 use App\Models\Product;
+use App\Models\SalesReturn;
 use App\Models\ServicePackage;
 use App\Models\StockMovement;
 use App\Models\User;
@@ -39,6 +40,12 @@ it('seeds the dev data described in the spec', function () {
         ->and(Order::pending()->where('created_at', '<', now()->subDay())->count())->toBe(1)
         ->and(Product::where('qty_on_hand', '<', 0)->count())->toBe(0)
         ->and(StockMovement::orderBy('created_at')->first()->type->value)->toBe('stock_in');
+
+    // One customer return, refunded, with the part back on the shelf.
+    $return = SalesReturn::sole();
+    expect($return->return_no)->toBe('RET-000001')
+        ->and($return->order->refund_status->value)->toBe('partial')
+        ->and(StockMovement::where('type', 'return_to_stock')->count())->toBe(1);
 
     // Manager PIN 1234 works for the seeded admins.
     $approver = app(ManagerPinService::class)->verify(User::where('email', 'cashier@example.com')->first(), '1234');

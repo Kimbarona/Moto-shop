@@ -49,6 +49,8 @@ type PayDialogProps = {
     methods: PaymentMethod[];
     defaultMethodId: number | null;
     title?: string;
+    /** Exchange credit applied to this sale (and what is left to give back). */
+    credit?: { label: string; applied: number; back: number };
     onPay: (payment: PaymentPayload) => Promise<boolean>;
 };
 
@@ -59,6 +61,7 @@ function PayForm({
     methods,
     defaultMethodId,
     title = 'Payment',
+    credit,
     onPay,
 }: PayDialogProps) {
     const [methodId, setMethodId] = useState<number | null>(
@@ -112,7 +115,9 @@ function PayForm({
                             {title}
                         </DialogTitle>
                         <DialogDescription>
-                            Choose how the customer pays. Enter confirms.
+                            {amountDue > 0
+                                ? 'Choose how the customer pays. Enter confirms.'
+                                : 'Nothing to pay. Pick how any balance is given back.'}
                         </DialogDescription>
                     </DialogHeader>
 
@@ -123,6 +128,17 @@ function PayForm({
                         <p className="tabular font-display text-5xl font-extrabold text-racing">
                             {peso(amountDue)}
                         </p>
+                        {credit && (
+                            <p className="mt-1 text-sm text-zinc-300">
+                                after {peso(credit.applied)} credit from{' '}
+                                {credit.label}
+                                {credit.back > 0 && (
+                                    <span className="block font-display text-lg font-bold text-sky-300">
+                                        Give back {peso(credit.back)}
+                                    </span>
+                                )}
+                            </p>
+                        )}
                     </div>
 
                     <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">

@@ -2,6 +2,7 @@ import { router, usePage } from '@inertiajs/react';
 import {
     ArrowLeft,
     Ban,
+    RefreshCcw,
     Bike,
     ClipboardPlus,
     Gauge,
@@ -12,6 +13,7 @@ import {
     UserPlus,
     Wallet,
     Wrench,
+    X,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { useEffect, useRef, useState } from 'react';
@@ -37,11 +39,20 @@ import type { Cart } from '@/hooks/use-cart';
 import { usePin } from '@/hooks/use-pin';
 import PosLayout from '@/layouts/pos-layout';
 import { api, openPrint, toApiError, urls } from '@/lib/api';
-import { age, qty } from '@/lib/format';
+import { age, peso, qty } from '@/lib/format';
 import { cn } from '@/lib/utils';
-import type { Catalog, Order, ServiceStatus } from '@/types/pos';
+import type {
+    Catalog,
+    ExchangeCredit,
+    Order,
+    ServiceStatus,
+} from '@/types/pos';
 
-type Props = Catalog & { mode: 'pos' | 'job'; order: Order | null };
+type Props = Catalog & {
+    mode: 'pos' | 'job';
+    order: Order | null;
+    exchange?: ExchangeCredit | null;
+};
 
 export default function PosPage(props: Props) {
     const title = props.order ? `${props.order.order_no}` : 'POS';
@@ -55,7 +66,7 @@ export default function PosPage(props: Props) {
             {props.order ? (
                 <OrderPos key={props.order.id} {...props} order={props.order} />
             ) : (
-                <LocalPos {...props} />
+                <LocalPos key={props.exchange?.id ?? 'sale'} {...props} />
             )}
         </PosLayout>
     );
@@ -171,10 +182,10 @@ function LocalPos(props: Props) {
     const cart = useLocalCart(auth.user.id, props.settings);
     const { withPin } = usePin();
     const searchRef = useRef<HTMLInputElement>(null);
-    const [customer, setCustomer] = useState<CustomerSelection>({
-        customer: null,
-        motorcycle: null,
-    });
+    const exchange = props.exchange ?? null;
+    const [customer, setCustomer] = useState<CustomerSelection>(() =>
+        exchangeCustomer(exchange),
+    );
     const [customerOpen, setCustomerOpen] = useState(false);
     const [payOpen, setPayOpen] = useState(false);
     const [serviceOpen, setServiceOpen] = useState(false);
@@ -184,6 +195,19 @@ function LocalPos(props: Props) {
     const empty = cart.lines.length === 0;
     const needsCustomer =
         !props.settings.allowWalkInWithoutCustomer && !customer.customer;
+
+    // Exchange: the return's credit covers the sale up to its total (the server
+    // computes the same); any credit left over is given back to the customer.
+    const creditApplied = exchange
+        ? Math.min(exchange.credit, cart.totals.total)
+        : 0;
+    const amountDue =
+        Math.round((cart.totals.total - creditApplied) * 100) / 100;
+    const creditBack = exchange
+        ? Math.round((exchange.credit - creditApplied) * 100) / 100
+        : 0;
+
+    const endExchange = () => router.visit(urls.pos(), { replace: true });
 
     const newSale = () => {
         if (
@@ -222,6 +246,7 @@ function LocalPos(props: Props) {
                             ? cart.orderDiscount.type
                             : null,
                     discount_value: cart.orderDiscount.value || null,
+                    exchange_return_id: exchange?.id ?? null,
                     ...payment,
                     pin,
                 }),
@@ -238,6 +263,13 @@ function LocalPos(props: Props) {
             });
             openPrint(urls.slip(order.id));
             cart.clear();
+
+            if (exchange) {
+                endExchange();
+
+                return true;
+            }
+
             setCustomer({ customer: null, motorcycle: null });
             setRefreshKey((k) => k + 1);
             searchRef.current?.focus();
@@ -287,76 +319,132 @@ function LocalPos(props: Props) {
     };
 
     const header = (
-        <div className="flex items-center gap-2">
-            <div className="min-w-0 flex-1">
-                <p className="font-display text-2xl leading-none font-extrabold">
-                    Walk-in sale
-                </p>
-                <p className="mt-1 truncate text-sm text-muted-foreground">
-                    {customer.customer ? (
-                        <>
-                            {customer.customer.name}
-                            {customer.motorcycle &&
-                                ` · ${customer.motorcycle.plate_no ?? customer.motorcycle.model ?? ''}`}
-                        </>
-                    ) : (
-                        'No customer'
-                    )}
-                </p>
+        <div className="space-y-2">
+            {exchange && (
+                <div
+                    className="flex items-center gap-2 rounded-lg border border-sky-500/40 bg-sky-500/10 px-3 py-2 text-sm"
+                    data-testid="exchange-banner"
+                >
+                    <RefreshCcw className="size-4 shrink-0 text-sky-600 dark:text-sky-400" />
+                    <div className="min-w-0 flex-1">
+                        <p className="font-semibold">
+                            Exchange · {exchange.return_no}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                            {peso(exchange.credit)} credit from slip{' '}
+                            {exchange.slip_no}
+                        </p>
+                    </div>
+                    <Button
+                        type="button"
+                        size="icon"
+                        variant="ghost"
+                        onClick={endExchange}
+                        aria-label="Leave exchange (keep the credit for later)"
+                        title="Leave exchange (the credit stays available)"
+                    >
+                        <X />
+                    </Button>
+                </div>
+            )}
+            <div className="flex items-center gap-2">
+                <div className="min-w-0 flex-1">
+                    <p className="font-display text-2xl leading-none font-extrabold">
+                        {exchange ? 'Exchange sale' : 'Walk-in sale'}
+                    </p>
+                    <p className="mt-1 truncate text-sm text-muted-foreground">
+                        {customer.customer ? (
+                            <>
+                                {customer.customer.name}
+                                {customer.motorcycle &&
+                                    ` · ${customer.motorcycle.plate_no ?? customer.motorcycle.model ?? ''}`}
+                            </>
+                        ) : (
+                            'No customer'
+                        )}
+                    </p>
+                </div>
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCustomerOpen(true)}
+                >
+                    <UserPlus /> {customer.customer ? 'Change' : 'Customer'}
+                </Button>
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setServiceOpen(true)}
+                >
+                    <ClipboardPlus /> Service order
+                </Button>
             </div>
-            <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setCustomerOpen(true)}
-            >
-                <UserPlus /> {customer.customer ? 'Change' : 'Customer'}
-            </Button>
-            <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                onClick={() => setServiceOpen(true)}
-            >
-                <ClipboardPlus /> Service order
-            </Button>
         </div>
     );
 
     const footer = (
-        <div className="grid grid-cols-[auto_1fr_1.4fr] gap-2">
-            <Button
-                type="button"
-                variant="outline"
-                size="xl"
-                onClick={newSale}
-                disabled={empty}
-                aria-label="Clear cart (F4)"
-                title="Clear (F4)"
-            >
-                <Trash2 />
-            </Button>
-            <Button
-                type="button"
-                variant="secondary"
-                size="xl"
-                onClick={saveAsPending}
-                disabled={empty || saving}
-            >
-                <Save /> Save as Pending
-            </Button>
-            <Button
-                type="button"
-                variant="racing"
-                size="xl"
-                className="text-2xl"
-                disabled={empty || !auth.can.takePayment || needsCustomer}
-                onClick={() => setPayOpen(true)}
-                title={needsCustomer ? 'Pick a customer first' : 'Pay (F9)'}
-            >
-                <Wallet className="size-6" /> PAY{' '}
-                <kbd className="text-xs opacity-70">F9</kbd>
-            </Button>
+        <div className="space-y-2">
+            {exchange && (
+                <div className="space-y-1 rounded-lg bg-sky-500/10 px-3 py-2 text-sm">
+                    <div className="flex justify-between">
+                        <span>Return credit</span>
+                        <span className="tabular font-semibold">
+                            −{peso(creditApplied)}
+                        </span>
+                    </div>
+                    <div className="flex justify-between font-display text-lg font-bold">
+                        <span>
+                            {creditBack > 0
+                                ? 'Give back to customer'
+                                : 'Customer pays'}
+                        </span>
+                        <span className="tabular" data-testid="exchange-due">
+                            {peso(creditBack > 0 ? creditBack : amountDue)}
+                        </span>
+                    </div>
+                </div>
+            )}
+            <div className="grid grid-cols-[auto_1fr_1.4fr] gap-2">
+                <Button
+                    type="button"
+                    variant="outline"
+                    size="xl"
+                    onClick={newSale}
+                    disabled={empty}
+                    aria-label="Clear cart (F4)"
+                    title="Clear (F4)"
+                >
+                    <Trash2 />
+                </Button>
+                <Button
+                    type="button"
+                    variant="secondary"
+                    size="xl"
+                    onClick={saveAsPending}
+                    disabled={empty || saving || !!exchange}
+                    title={
+                        exchange
+                            ? 'An exchange is paid right away'
+                            : 'Save as Pending'
+                    }
+                >
+                    <Save /> Save as Pending
+                </Button>
+                <Button
+                    type="button"
+                    variant="racing"
+                    size="xl"
+                    className="text-2xl"
+                    disabled={empty || !auth.can.takePayment || needsCustomer}
+                    onClick={() => setPayOpen(true)}
+                    title={needsCustomer ? 'Pick a customer first' : 'Pay (F9)'}
+                >
+                    <Wallet className="size-6" /> PAY{' '}
+                    <kbd className="text-xs opacity-70">F9</kbd>
+                </Button>
+            </div>
         </div>
     );
 
@@ -377,7 +465,16 @@ function LocalPos(props: Props) {
             <PayDialog
                 open={payOpen}
                 onOpenChange={setPayOpen}
-                amountDue={cart.totals.amount_due}
+                amountDue={exchange ? amountDue : cart.totals.amount_due}
+                credit={
+                    exchange
+                        ? {
+                              label: exchange.return_no,
+                              applied: creditApplied,
+                              back: creditBack,
+                          }
+                        : undefined
+                }
                 methods={props.paymentMethods}
                 defaultMethodId={props.settings.defaultPaymentMethodId}
                 onPay={pay}
@@ -422,6 +519,25 @@ function LocalPos(props: Props) {
             />
         </>
     );
+}
+
+/** Start an exchange sale with the original order's customer and bike. */
+function exchangeCustomer(exchange: ExchangeCredit | null): CustomerSelection {
+    if (!exchange?.customer) {
+        return { customer: null, motorcycle: null };
+    }
+
+    const motorcycle = exchange.motorcycle
+        ? { ...exchange.motorcycle, color: null }
+        : null;
+
+    return {
+        customer: {
+            ...exchange.customer,
+            motorcycles: motorcycle ? [motorcycle] : [],
+        },
+        motorcycle,
+    };
 }
 
 /* ------------------------------------------------------------- pending order */

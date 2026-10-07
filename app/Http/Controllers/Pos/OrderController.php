@@ -8,6 +8,7 @@ use App\Http\Requests\Pos\StoreOrderRequest;
 use App\Http\Requests\Pos\UpdateOrderRequest;
 use App\Http\Resources\OrderResource;
 use App\Models\Order;
+use App\Models\SalesReturn;
 use App\Services\Orders\OrderService;
 use App\Services\Orders\PaymentService;
 use App\Support\OrderTimeline;
@@ -91,6 +92,8 @@ class OrderController extends Controller
         return Inertia::render('orders/show', [
             'order' => OrderResource::make($order)->resolve($request),
             'timeline' => OrderTimeline::for($order),
+            'returns' => $order->returns()->with(['order.customer', 'exchangeOrder'])->get()
+                ->map(fn (SalesReturn $return) => ReturnController::returnPayload($return))->values(),
         ]);
     }
 

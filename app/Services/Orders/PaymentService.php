@@ -14,6 +14,7 @@ use App\Models\OrderItem;
 use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\Product;
+use App\Models\SalesReturn;
 use App\Models\Service;
 use App\Models\User;
 use App\Services\Numbering\SequenceService;
@@ -31,6 +32,10 @@ use Illuminate\Validation\ValidationException;
  *  3. compute mechanic commission on labor lines
  *  4. record the payment and assign the next slip number (last, so a failure anywhere
  *     rolls the number back and slip numbers never have gaps)
+ *
+ * Exchange: checkout() may carry exchange_return_id. The return's value is applied as
+ * credit (never more than the sale total); the customer pays the rest, or receives the
+ * difference, which is recorded as the return's refund_amount.
  */
 class PaymentService
 {
@@ -41,6 +46,7 @@ class PaymentService
         private readonly SequenceService $sequences,
         private readonly OrderService $orders,
         private readonly PosSettings $pos,
+        private readonly ReturnService $returns,
     ) {}
 
     /**
@@ -54,9 +60,10 @@ class PaymentService
     /**
      * Walk-in counter sale: create the order from the cart and pay it in one go.
      * One manager PIN covers every discount on the cart.
+     * The return credit is always computed here from the return, never taken from input.
      *
      * @param  list<array<string, mixed>>  $lines  [{type: part|labor|package, product_id|service_id|package_id, qty?, unit_price?, discount_type?, discount_value?, mechanic_id?}]
-     * @param  array{customer_id?: int|null, customer_motorcycle_id?: int|null, notes?: string|null, discount_type?: string|null, discount_value?: float|string|null, exchange_return_id?: int|null, return_credit?: float|string|null}  $attributes
+     * @param  array{customer_id?: int|null, customer_motorcycle_id?: int|null, notes?: string|null, discount_type?: string|null, discount_value?: float|string|null, exchange_return_id?: int|null}  $attributes
      * @param  array{payment_method_id: int, amount_tendered?: float|string|null, reference_no?: string|null}  $payment
      */
     public function checkout(User $actor, array $lines, array $attributes, array $payment, ?string $pin = null): Order
@@ -71,6 +78,11 @@ class PaymentService
         $this->approveCartDiscounts($actor, $lines, $attributes, $pin);
 
         return DB::transaction(function () use ($actor, $lines, $attributes, $payment) {
+            // Exchange: lock the return first so its credit can only be used once.
+            $exchange = filled($attributes['exchange_return_id'] ?? null)
+                ? $this->returns->lockExchangeCredit((int) $attributes['exchange_return_id'])
+                : null;
+
             $order = $this->orders->create($actor, OrderType::WalkIn, [
                 'customer_id' => $attributes['customer_id'] ?? null,
                 'customer_motorcycle_id' => $attributes['customer_motorcycle_id'] ?? null,
@@ -83,14 +95,7 @@ class PaymentService
                 $this->orders->setOrderDiscount($order, $actor, $attributes['discount_type'] ?? null, $attributes['discount_value'], preApproved: true);
             }
 
-            if (filled($attributes['exchange_return_id'] ?? null)) {
-                $order->forceFill([
-                    'exchange_return_id' => $attributes['exchange_return_id'],
-                    'return_credit' => round((float) ($attributes['return_credit'] ?? 0), 2),
-                ])->save();
-            }
-
-            return $this->payLocked($order, $actor, $payment);
+            return $this->payLocked($order, $actor, $payment, $exchange);
         });
     }
 
@@ -129,7 +134,7 @@ class PaymentService
      *
      * @param  array{payment_method_id: int, amount_tendered?: float|string|null, reference_no?: string|null}  $payment
      */
-    private function payLocked(Order $order, User $actor, array $payment): Order
+    private function payLocked(Order $order, User $actor, array $payment, ?SalesReturn $exchange = null): Order
     {
         /** @var Order $order */
         $order = Order::query()->lockForUpdate()->findOrFail($order->getKey());
@@ -149,6 +154,14 @@ class PaymentService
 
         if ($order->type === OrderType::WalkIn && ! $this->pos->allow_walk_in_without_customer && ! $order->customer_id) {
             throw ValidationException::withMessages(['customer_id' => 'Pick a customer for this sale (walk-in without a customer is turned off in Settings).']);
+        }
+
+        // Exchange credit covers the sale up to its total; any excess is paid out below.
+        $credit = $exchange ? (float) $exchange->return_total : 0.0;
+
+        if ($exchange) {
+            $order->exchange_return_id = $exchange->id;
+            $order->return_credit = min($credit, (float) $order->total);
         }
 
         $due = $order->amountDue();
@@ -203,6 +216,16 @@ class PaymentService
             'done_at' => $order->isService() ? ($order->done_at ?? $paidAt) : null,
         ])->save();
 
+        if ($exchange) {
+            $excess = round($credit - (float) $order->return_credit, 2);
+
+            // The customer receives the difference (refund_amount = money paid out).
+            $exchange->forceFill([
+                'refund_amount' => max(0.0, $excess),
+                'refund_method_id' => $excess > 0 ? $this->payoutMethod($payment)?->id : null,
+            ])->save();
+        }
+
         if ($order->customer_motorcycle_id && $order->odometer_in) {
             CustomerMotorcycle::whereKey($order->customer_motorcycle_id)
                 ->where(fn ($q) => $q->whereNull('last_odometer')->orWhere('last_odometer', '<', $order->odometer_in))
@@ -216,10 +239,23 @@ class PaymentService
                 'amount_due' => $due,
                 'method' => $method?->name,
                 'reference_no' => $reference,
+                'exchange_return' => $exchange?->return_no,
+                'return_credit' => $exchange ? (float) $order->return_credit : null,
             ])
             ->log("Order {$order->order_no} paid, slip {$order->slip_no}");
 
         return $order->refresh()->load(['items', 'payments']);
+    }
+
+    /**
+     * How an exchange difference is given back: the method picked, else cash.
+     *
+     * @param  array<string, mixed>  $payment
+     */
+    private function payoutMethod(array $payment): ?PaymentMethod
+    {
+        return PaymentMethod::query()->active()->find($payment['payment_method_id'] ?? 0)
+            ?? PaymentMethod::query()->active()->where('type', PaymentMethodType::Cash)->orderBy('sort_order')->first();
     }
 
     /**

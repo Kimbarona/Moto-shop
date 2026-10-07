@@ -96,8 +96,15 @@ class OrderTimeline
             'created' => 'Order created',
             'paid' => sprintf('Paid · slip %s · %s', $activity->properties['slip_no'] ?? '', Money::format($activity->properties['total'] ?? 0)),
             'voided' => 'Voided: '.($activity->properties['reason'] ?? ''),
+            'returned' => sprintf(
+                'Return %s · %s · %s',
+                $activity->properties['return_no'] ?? '',
+                ucfirst((string) ($activity->properties['resolution'] ?? '')),
+                Money::format($activity->properties['return_total'] ?? 0),
+            ),
             'package_added' => 'Package added: '.($activity->properties['package'] ?? ''),
             'reprint' => '', // shown from reprint_logs instead
+            'approved' => '', // shown from manager_approvals instead
             'updated' => static::orderChanges($attributes),
             default => (string) $activity->description,
         };

@@ -12,7 +12,7 @@ use App\Models\User;
  *  - mechanics edit / mark done only Pending service orders assigned to them
  *  - payment: admins and cashiers; void: admins, or cashiers with a manager PIN
  *    (the PIN itself is enforced by VoidService)
- *  - Paid orders are locked; nothing is deleted
+ *  - Paid orders are locked (later changes go through Return / Refund); nothing is deleted
  */
 class OrderPolicy
 {
@@ -69,6 +69,15 @@ class OrderPolicy
     public function void(User $user, Order $order): bool
     {
         return ! $order->isVoided() && $user->can('take-payment');
+    }
+
+    /**
+     * Return / refund / exchange on a paid order (cashiers also need a manager PIN,
+     * enforced by ReturnService).
+     */
+    public function return(User $user, Order $order): bool
+    {
+        return $order->isReturnable() && $user->can('take-payment');
     }
 
     public function update(User $user, Order $order): bool

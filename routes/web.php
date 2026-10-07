@@ -7,6 +7,7 @@ use App\Http\Controllers\Pos\OrderController;
 use App\Http\Controllers\Pos\OrderItemController;
 use App\Http\Controllers\Pos\PosController;
 use App\Http\Controllers\Pos\PrintController;
+use App\Http\Controllers\Pos\ReturnController;
 use App\Http\Controllers\Pos\ServiceBoardController;
 use App\Http\Controllers\Pos\SummaryController;
 use App\Support\HomeRedirect;
@@ -30,12 +31,14 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
     Route::get('orders/{order}', [OrderController::class, 'page'])->middleware('can:use-service-board')->name('orders.show');
     Route::get('stock-lookup', [CatalogController::class, 'stockLookup'])->middleware('can:view-stock')->name('stock-lookup');
     Route::get('customers/{customer}', [CustomerController::class, 'show'])->middleware('can:use-service-board')->name('customers.show');
+    Route::get('returns/new', [ReturnController::class, 'create'])->middleware('can:take-payment')->name('returns.create');
     Route::get('my-summary', SummaryController::class)->name('my-summary');
 
     // Printing (browser print)
     Route::middleware('can:use-service-board')->prefix('print')->name('print.')->group(function () {
         Route::get('slip/{order}', [PrintController::class, 'slip'])->name('slip');
         Route::get('job-ticket/{order}', [PrintController::class, 'jobTicket'])->name('job-ticket');
+        Route::get('return-slip/{salesReturn}', [PrintController::class, 'returnSlip'])->middleware('can:take-payment')->name('return-slip');
     });
 
     // JSON API used by the POS / Service Board
@@ -67,6 +70,10 @@ Route::middleware(['auth', 'password.changed'])->group(function () {
         Route::middleware('can:take-payment')->group(function () {
             Route::post('orders/{order}/pay', [OrderActionController::class, 'pay'])->name('orders.pay');
             Route::post('checkout', [OrderActionController::class, 'checkout'])->name('checkout');
+
+            Route::get('returns/orders', [ReturnController::class, 'search'])->name('returns.search');
+            Route::get('returns/orders/{order}', [ReturnController::class, 'show'])->name('returns.order');
+            Route::post('returns', [ReturnController::class, 'store'])->name('returns.store');
         });
     });
 });

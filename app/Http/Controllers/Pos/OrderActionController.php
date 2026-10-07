@@ -49,7 +49,7 @@ class OrderActionController extends Controller
         $order = $this->payments->checkout(
             $request->user(),
             $request->validated('lines'),
-            $request->safe()->only(['customer_id', 'customer_motorcycle_id', 'notes', 'discount_type', 'discount_value']),
+            $request->safe()->only(['customer_id', 'customer_motorcycle_id', 'notes', 'discount_type', 'discount_value', 'exchange_return_id']),
             $request->safe()->only(['payment_method_id', 'amount_tendered', 'reference_no']),
             $request->validated('pin'),
         );

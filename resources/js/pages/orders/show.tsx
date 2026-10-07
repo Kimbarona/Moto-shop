@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import PosLayout from '@/layouts/pos-layout';
 import { openPrint, urls } from '@/lib/api';
 import { dateTime, peso, qty } from '@/lib/format';
-import type { Order } from '@/types/pos';
+import type { Order, ReturnSummary } from '@/types/pos';
 
 type TimelineEntry = {
     at: string | null;
@@ -19,9 +19,11 @@ type TimelineEntry = {
 export default function OrderShow({
     order,
     timeline,
+    returns = [],
 }: {
     order: Order;
     timeline: TimelineEntry[];
+    returns?: ReturnSummary[];
 }) {
     const { auth } = usePage().props;
     const [voidOpen, setVoidOpen] = useState(false);
@@ -108,11 +110,9 @@ export default function OrderShow({
                                 <Printer /> Job ticket
                             </Button>
                         )}
-                        {order.status === 'paid' && auth.can.takePayment && (
+                        {order.can.return && (
                             <Button variant="outline" size="lg" asChild>
-                                <Link
-                                    href={`${urls.returns}?order=${order.id}`}
-                                >
+                                <Link href={urls.returnFor(order.id)}>
                                     <Undo2 /> Return / refund
                                 </Link>
                             </Button>
@@ -316,6 +316,61 @@ export default function OrderShow({
                                 />
                             )}
                         </section>
+
+                        {returns.length > 0 && (
+                            <section className="space-y-2 rounded-xl border bg-card p-4 text-sm">
+                                <h2 className="font-display text-lg font-bold">
+                                    Returns
+                                </h2>
+                                {returns.map((r) => (
+                                    <div key={r.id} className="space-y-0.5">
+                                        <Row
+                                            label={`${r.return_no} · ${r.resolution === 'refund' ? 'Refund' : 'Exchange'}`}
+                                            value={`−${peso(r.return_total)}`}
+                                        />
+                                        <p className="text-xs text-muted-foreground">
+                                            {dateTime(r.date)} · {r.reason}
+                                            {r.exchange_order &&
+                                                ` · credit used on ${r.exchange_order.slip_no}`}
+                                            {r.credit_available &&
+                                                ' · credit not used yet'}
+                                        </p>
+                                        <div className="flex gap-2 pt-1">
+                                            <Button
+                                                size="sm"
+                                                variant="outline"
+                                                onClick={() =>
+                                                    openPrint(
+                                                        urls.returnSlip(
+                                                            r.id,
+                                                            true,
+                                                        ),
+                                                    )
+                                                }
+                                            >
+                                                <Printer /> Return slip
+                                            </Button>
+                                            {r.credit_available &&
+                                                auth.can.takePayment && (
+                                                    <Button
+                                                        size="sm"
+                                                        variant="racing"
+                                                        asChild
+                                                    >
+                                                        <Link
+                                                            href={urls.exchange(
+                                                                r.id,
+                                                            )}
+                                                        >
+                                                            Use credit
+                                                        </Link>
+                                                    </Button>
+                                                )}
+                                        </div>
+                                    </div>
+                                ))}
+                            </section>
+                        )}
 
                         {order.payments.length > 0 && (
                             <section className="space-y-2 rounded-xl border bg-card p-4 text-sm">

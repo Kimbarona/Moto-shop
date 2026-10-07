@@ -14,12 +14,13 @@ use App\Models\ServicePackage;
 use App\Models\User;
 use App\Services\Orders\OrderService;
 use App\Services\Orders\PaymentService;
+use App\Services\Orders\ReturnService;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Date;
 
 /**
- * Two weeks of sales plus a few open service jobs, all created through the real
+ * Two weeks of sales, one customer return, and a few open service jobs, all created through the real
  * services (stock, slip numbers, commission) so the dashboard and reports have data.
  */
 class TransactionSeeder extends Seeder
@@ -39,7 +40,12 @@ class TransactionSeeder extends Seeder
         $payments = app(PaymentService::class);
         $methods = PaymentMethod::orderBy('sort_order')->get()->keyBy('name');
         $mechanics = Mechanic::orderBy('id')->get();
-        $products = Product::where('is_active', true)->get();
+        // Parts the open jobs use at the end are kept out of the random sales, so they
+        // can never be sold out first.
+        $heldBack = Product::whereIn('part_number', ['BP-YMH-MAXI', 'CS-428-XRM'])->pluck('id')
+            ->merge(ServicePackage::where('name', 'PMS – Scooter')->first()?->items->pluck('product_id') ?? [])
+            ->filter();
+        $products = Product::where('is_active', true)->whereNotIn('id', $heldBack)->get();
         $services = Service::where('is_active', true)->get();
 
         try {
@@ -86,11 +92,45 @@ class TransactionSeeder extends Seeder
                     $payments->pay($order, $cashier, ['payment_method_id' => $methods['Cash']->id, 'amount_tendered' => 5000]);
                 }
             }
+
+            $this->sampleReturn($today, $methods['Cash']);
         } finally {
             Date::setTestNow();
         }
 
         $this->openJobs($cashier, $orders, $mechanics);
+    }
+
+    /**
+     * One customer return: one part from a walk-in sale a few days before, back to stock,
+     * refunded in cash (processed by the manager, so no PIN).
+     */
+    private function sampleReturn(Carbon $today, PaymentMethod $cash): void
+    {
+        $order = Order::query()->paid()->where('type', OrderType::WalkIn)
+            ->where('paid_at', '<', $today->copy()->subDays(4))
+            ->whereHas('items', fn ($q) => $q->where('line_type', 'part'))
+            ->has('items', '>=', 2)
+            ->latest('paid_at')
+            ->first();
+
+        if (! $order) {
+            return;
+        }
+
+        $manager = User::where('email', 'admin@example.com')->firstOrFail();
+        $line = $order->items()->where('line_type', 'part')->first();
+
+        Date::setTestNow($today->copy()->subDays(3)->setTime(14, 10));
+        auth()->setUser($manager);
+
+        app(ReturnService::class)->process($order, $manager, [
+            'reason' => 'not_needed',
+            'remarks' => 'Customer bought the wrong size; unopened.',
+            'resolution' => 'refund',
+            'refund_method_id' => $cash->id,
+            'items' => [['order_item_id' => $line->id, 'qty' => 1, 'disposition' => 'back_to_stock']],
+        ]);
     }
 
     private function openJobs(User $cashier, OrderService $orders, $mechanics): void

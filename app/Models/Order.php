@@ -122,6 +122,19 @@ class Order extends Model
         return $this->morphMany(StockMovement::class, 'reference');
     }
 
+    public function returns(): HasMany
+    {
+        return $this->hasMany(SalesReturn::class)->orderBy('id');
+    }
+
+    /**
+     * The return whose exchange credit this sale used.
+     */
+    public function exchangeReturn(): BelongsTo
+    {
+        return $this->belongsTo(SalesReturn::class, 'exchange_return_id');
+    }
+
     public function cashier(): BelongsTo
     {
         return $this->belongsTo(User::class, 'cashier_id');
@@ -163,6 +176,14 @@ class Order extends Model
     public function amountDue(): float
     {
         return max(0.0, round((float) $this->total - (float) $this->return_credit, 2));
+    }
+
+    /**
+     * Can items still be returned (paid, and not everything returned yet)?
+     */
+    public function isReturnable(): bool
+    {
+        return $this->isPaid() && $this->refund_status !== RefundStatus::Full;
     }
 
     /**

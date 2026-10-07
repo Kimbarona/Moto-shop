@@ -5,10 +5,12 @@ namespace App\Http\Controllers\Pos;
 use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\ReprintLog;
+use App\Models\SalesReturn;
 use App\Settings\ShopSettings;
 use App\Settings\SlipSettings;
 use App\Settings\TaxSettings;
 use Illuminate\Contracts\View\View;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Http\Request;
 
 /**
@@ -25,7 +27,7 @@ class PrintController extends Controller
 
         return view('print.slip', [
             ...$this->common($request, $order, 'slip'),
-            'order' => $order->load(['items', 'payments.method', 'customer', 'motorcycle.motorcycleModel.make', 'cashier', 'mechanics']),
+            'order' => $order->load(['items', 'payments.method', 'customer', 'motorcycle.motorcycleModel.make', 'cashier', 'mechanics', 'exchangeReturn', 'returns']),
         ]);
     }
 
@@ -40,23 +42,34 @@ class PrintController extends Controller
         ]);
     }
 
+    public function returnSlip(Request $request, SalesReturn $salesReturn): View
+    {
+        return view('print.return-slip', [
+            ...$this->common($request, $salesReturn, 'return_slip'),
+            'return' => $salesReturn->load([
+                'items.orderItem', 'order.customer', 'order.motorcycle.motorcycleModel.make',
+                'refundMethod', 'approver', 'processor', 'exchangeOrder',
+            ]),
+        ]);
+    }
+
     /**
      * @return array<string, mixed>
      */
-    private function common(Request $request, Order $order, string $document): array
+    private function common(Request $request, Model $printable, string $document): array
     {
         $reprint = $request->boolean('reprint');
 
         if ($reprint) {
             ReprintLog::create([
                 'document' => $document,
-                'printable_type' => $order->getMorphClass(),
-                'printable_id' => $order->id,
+                'printable_type' => $printable->getMorphClass(),
+                'printable_id' => $printable->getKey(),
                 'user_id' => $request->user()->id,
                 'ip_address' => $request->ip(),
             ]);
 
-            activity('Order')->causedBy($request->user())->performedOn($order)->event('reprint')
+            activity(class_basename($printable))->causedBy($request->user())->performedOn($printable)->event('reprint')
                 ->withProperties(['document' => $document])
                 ->log('Reprinted '.str_replace('_', ' ', $document));
         }

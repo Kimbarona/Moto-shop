@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\Order;
 use App\Models\OrderItem;
 use App\Models\Payment;
+use App\Models\ReturnItem;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -70,10 +71,18 @@ class SummaryController extends Controller
                 ->whereHas('order', fn ($q) => $q->paid()->whereBetween('paid_at', [$from, $until]))
                 ->get();
 
+            // Refunded labor in the period takes its commission back (on the return date).
+            $reversals = ReturnItem::query()
+                ->with(['orderItem.order', 'salesReturn'])
+                ->whereHas('orderItem', fn ($q) => $q->where('mechanic_id', $user->mechanic->id)->where('line_type', 'labor'))
+                ->whereHas('salesReturn', fn ($q) => $q->whereBetween('date', [$from, $until]))
+                ->get();
+
             $props['mechanic'] = [
                 'jobs' => $lines->pluck('order_id')->unique()->count(),
-                'labor' => round($lines->sum(fn (OrderItem $item) => $item->netAmount()), 2),
-                'commission' => round((float) $lines->sum('commission_amount'), 2),
+                'labor' => round($lines->sum(fn (OrderItem $item) => $item->netAmount()) - (float) $reversals->sum('amount'), 2),
+                'commission' => round((float) $lines->sum('commission_amount') - (float) $reversals->sum('commission_reversed'), 2),
+                'reversed' => round((float) $reversals->sum('commission_reversed'), 2),
                 'openJobs' => Order::query()->pending()->whereHas('mechanics', fn ($m) => $m->where('user_id', $user->id))->count(),
                 'lines' => $lines->sortByDesc(fn ($item) => $item->order?->paid_at)->map(fn (OrderItem $item) => [
                     'slip_no' => $item->order?->slip_no,

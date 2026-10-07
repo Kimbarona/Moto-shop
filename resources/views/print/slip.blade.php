@@ -76,7 +76,7 @@
             <tr class="small"><td>VAT ({{ $qty($tax->vat_rate) }}%)</td><td class="num">{{ Money::format($order->vat_amount) }}</td></tr>
         @endif
         @if ((float) $order->return_credit > 0)
-            <tr><td>Return credit</td><td class="num">-{{ Money::format($order->return_credit) }}</td></tr>
+            <tr><td>Return credit{{ $order->exchangeReturn ? ' ('.$order->exchangeReturn->return_no.')' : '' }}</td><td class="num">-{{ Money::format($order->return_credit) }}</td></tr>
         @endif
         <tr class="grand"><td>TOTAL</td><td class="num">{{ Money::format($order->amountDue()) }}</td></tr>
         @if ($payment)
@@ -89,6 +89,16 @@
             @endif
         @endif
     </table>
+
+    @if ($order->exchangeReturn && (float) $order->exchangeReturn->refund_amount > 0 && ! $order->isVoided())
+        <table class="totals">
+            <tr><td>Credit balance given back</td><td class="num">{{ Money::format($order->exchangeReturn->refund_amount) }}</td></tr>
+        </table>
+    @endif
+
+    @if ($order->returns->isNotEmpty())
+        <div class="small muted" style="margin-top:2mm">Returns: {{ $order->returns->map(fn ($r) => $r->return_no.' ('.Money::format($r->return_total).')')->implode(', ') }}</div>
+    @endif
 
     <div class="tread"></div>
     <div class="center small">{!! nl2br(e($slip->footer_text)) !!}</div>

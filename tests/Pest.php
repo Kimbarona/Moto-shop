@@ -61,3 +61,27 @@ function stockTx(callable $callback): mixed
 {
     return DB::transaction($callback);
 }
+
+/**
+ * Recursively collect every key in a JSON payload.
+ *
+ * @return list<string>
+ */
+function allKeys(mixed $data): array
+{
+    if (! is_array($data)) {
+        return [];
+    }
+
+    $keys = [];
+
+    foreach ($data as $key => $value) {
+        if (is_string($key)) {
+            $keys[] = $key;
+        }
+
+        $keys = [...$keys, ...allKeys($value)];
+    }
+
+    return $keys;
+}

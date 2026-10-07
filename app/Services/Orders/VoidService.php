@@ -8,6 +8,7 @@ use App\Enums\OrderStatus;
 use App\Enums\RefundStatus;
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\SalesReturn;
 use App\Models\User;
 use App\Services\Approvals\ManagerPinService;
 use App\Services\Stock\StockService;
@@ -20,6 +21,7 @@ use Illuminate\Validation\ValidationException;
  *  - Pending: the reservation is released (reserved qty is computed from Pending orders).
  *  - Paid, same day only: stock comes back (void_reversal), payments are voided and
  *    commission is reversed. The slip number stays used — numbering never has gaps.
+ *    An exchange sale releases its return credit so it can be used again.
  *  - Paid on an earlier day: blocked; use Return / Refund.
  */
 class VoidService
@@ -84,6 +86,13 @@ class VoidService
                 }
 
                 $order->payments()->whereNull('voided_at')->update(['voided_at' => now(), 'voided_by' => $actor->id]);
+
+                // An exchange sale gives its return credit back (usable on a new sale),
+                // and any difference paid out to the customer is taken back.
+                if ($order->exchange_return_id) {
+                    SalesReturn::query()->lockForUpdate()->whereKey($order->exchange_return_id)
+                        ->update(['refund_amount' => 0, 'refund_method_id' => null]);
+                }
             }
 
             $order->forceFill([

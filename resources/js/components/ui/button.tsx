@@ -19,12 +19,17 @@ const buttonVariants = cva(
           "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
         ghost: "hover:bg-accent hover:text-accent-foreground",
         link: "text-primary underline-offset-4 hover:underline",
+        // Primary call-to-action with the thin diagonal racing stripe.
+        racing:
+          "bg-primary text-primary-foreground racing-stripe shadow-md hover:bg-primary/90 font-display font-bold tracking-wide",
       },
       size: {
         default: "h-9 px-4 py-2 has-[>svg]:px-3",
         sm: "h-8 rounded-md px-3 has-[>svg]:px-2.5",
         lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
         icon: "size-9",
+        // Big tap targets for the counter.
+        xl: "h-14 rounded-lg px-6 text-lg has-[>svg]:px-5 [&_svg:not([class*='size-'])]:size-5",
       },
     },
     defaultVariants: {

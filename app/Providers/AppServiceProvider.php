@@ -35,6 +35,7 @@ use App\Policies\StockMovementPolicy;
 use App\Settings\SecuritySettings;
 use Carbon\CarbonImmutable;
 use Illuminate\Auth\Events\Login;
+use Illuminate\Http\Resources\Json\JsonResource;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Event;
@@ -66,6 +67,9 @@ class AppServiceProvider extends ServiceProvider
     protected function configureDefaults(): void
     {
         Date::use(CarbonImmutable::class);
+
+        // API resources are returned as-is (no {"data": …} envelope).
+        JsonResource::withoutWrapping();
 
         DB::prohibitDestructiveCommands(app()->isProduction());
     }

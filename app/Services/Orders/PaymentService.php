@@ -264,7 +264,7 @@ class PaymentService
      * @param  list<array<string, mixed>>  $lines
      * @param  array<string, mixed>  $attributes
      */
-    private function approveCartDiscounts(User $actor, array $lines, array $attributes, ?string $pin): void
+    public function approveCartDiscounts(User $actor, array $lines, array $attributes, ?string $pin): void
     {
         $worst = 0.0;
         $gross = 0.0;

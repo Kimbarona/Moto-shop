@@ -1,6 +1,7 @@
 <?php
 
 use App\Enums\Role;
+use App\Http\Middleware\HandleInertiaRequests;
 use App\Models\User;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\RateLimiter;
@@ -28,6 +29,25 @@ it('sends each role to its own home after login', function (Role $role, string $
     'mechanic' => [Role::Mechanic, '/service-board'],
     'clerk' => [Role::InventoryClerk, '/admin'],
 ]);
+
+it('sends Inertia logins to the non-Inertia back-office with a full page load', function () {
+    $admin = admin();
+
+    // The React login form posts via Inertia (XHR). /admin is Filament, not an Inertia
+    // page, so the server must answer 409 + X-Inertia-Location instead of a redirect.
+    $this->withHeaders(['X-Inertia' => 'true'])
+        ->post(route('login.store'), ['email' => $admin->email, 'password' => 'password'])
+        ->assertStatus(409)
+        ->assertHeader('X-Inertia-Location', '/admin');
+
+    // A GET needs the current asset version, or Inertia answers with a version-mismatch reload.
+    $version = app(HandleInertiaRequests::class)->version(request());
+
+    $this->withHeaders(['X-Inertia' => 'true', 'X-Inertia-Version' => (string) $version])
+        ->get('/')
+        ->assertStatus(409)
+        ->assertHeader('X-Inertia-Location', '/admin');
+});
 
 it('does not log in with a wrong password', function () {
     $user = cashier();

@@ -30,4 +30,30 @@ export default defineConfig({
     esbuild: {
         jsx: 'automatic',
     },
+    build: {
+        rollupOptions: {
+            output: {
+                // Long-lived vendor chunks: cached across deploys of app code.
+                manualChunks(id) {
+                    if (!id.includes('node_modules')) {
+                        return undefined;
+                    }
+
+                    if (/node_modules\/(react|react-dom|scheduler)\//.test(id)) {
+                        return 'vendor-react';
+                    }
+
+                    if (/node_modules\/(@inertiajs|axios|qs|laravel-precognition)/.test(id)) {
+                        return 'vendor-inertia';
+                    }
+
+                    if (/node_modules\/(@radix-ui|lucide-react|sonner|@floating-ui)/.test(id)) {
+                        return 'vendor-ui';
+                    }
+
+                    return 'vendor';
+                },
+            },
+        },
+    },
 });

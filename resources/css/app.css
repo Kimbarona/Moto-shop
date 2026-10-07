@@ -2,16 +2,37 @@
 
 @import 'tw-animate-css';
 
+/* Fonts are bundled locally (the counter keeps working without internet). */
+@import '@fontsource/barlow/400.css';
+@import '@fontsource/barlow/500.css';
+@import '@fontsource/barlow/600.css';
+@import '@fontsource/barlow/700.css';
+@import '@fontsource/barlow-condensed/600.css';
+@import '@fontsource/barlow-condensed/700.css';
+@import '@fontsource/barlow-condensed/800.css';
+
 @source '../views';
 @source '../../vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php';
 
 @custom-variant dark (&:is(.dark *));
 
+/*
+ | "Garage / Pit Lane" theme.
+ | Asphalt #16181D · Gunmetal #2A2F38 · Racing Orange #FF6B1A · Hi-Vis #FFC93C · Light #F4F5F7
+ */
 @theme {
     --font-sans:
-        'Instrument Sans', ui-sans-serif, system-ui, sans-serif,
-        'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
-        'Noto Color Emoji';
+        'Barlow', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji',
+        'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-display: 'Barlow Condensed', 'Barlow', ui-sans-serif, sans-serif;
+
+    --color-asphalt: #16181d;
+    --color-gunmetal: #2a2f38;
+    --color-racing: #ff6b1a;
+    --color-hivis: #ffc93c;
+    --color-steel: #3a404b;
+    --color-paid: #22c55e;
+    --color-refunded: #a855f7;
 
     --radius-lg: var(--radius);
     --radius-md: calc(var(--radius) - 2px);
@@ -41,6 +62,10 @@
     --color-destructive: var(--destructive);
     --color-destructive-foreground: var(--destructive-foreground);
 
+    --color-warning: var(--warning);
+    --color-warning-foreground: var(--warning-foreground);
+    --color-success: var(--success);
+
     --color-border: var(--border);
     --color-input: var(--input);
     --color-ring: var(--ring);
@@ -62,74 +87,80 @@
 }
 
 :root {
-    --background: oklch(1 0 0);
-    --foreground: oklch(0.145 0 0);
-    --card: oklch(1 0 0);
-    --card-foreground: oklch(0.145 0 0);
-    --popover: oklch(1 0 0);
-    --popover-foreground: oklch(0.145 0 0);
-    --primary: oklch(0.205 0 0);
-    --primary-foreground: oklch(0.985 0 0);
-    --secondary: oklch(0.97 0 0);
-    --secondary-foreground: oklch(0.205 0 0);
-    --muted: oklch(0.97 0 0);
-    --muted-foreground: oklch(0.556 0 0);
-    --accent: oklch(0.97 0 0);
-    --accent-foreground: oklch(0.205 0 0);
-    --destructive: oklch(0.577 0.245 27.325);
-    --destructive-foreground: oklch(0.577 0.245 27.325);
-    --border: oklch(0.922 0 0);
-    --input: oklch(0.922 0 0);
-    --ring: oklch(0.87 0 0);
-    --chart-1: oklch(0.646 0.222 41.116);
-    --chart-2: oklch(0.6 0.118 184.704);
-    --chart-3: oklch(0.398 0.07 227.392);
-    --chart-4: oklch(0.828 0.189 84.429);
-    --chart-5: oklch(0.769 0.188 70.08);
-    --radius: 0.625rem;
-    --sidebar: oklch(0.985 0 0);
-    --sidebar-foreground: oklch(0.145 0 0);
-    --sidebar-primary: oklch(0.205 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.97 0 0);
-    --sidebar-accent-foreground: oklch(0.205 0 0);
-    --sidebar-border: oklch(0.922 0 0);
-    --sidebar-ring: oklch(0.87 0 0);
+    --background: #f4f5f7;
+    --foreground: #16181d;
+    --card: #ffffff;
+    --card-foreground: #16181d;
+    --popover: #ffffff;
+    --popover-foreground: #16181d;
+    --primary: #ff6b1a;
+    --primary-foreground: #16181d;
+    --secondary: #e6e8ec;
+    --secondary-foreground: #16181d;
+    --muted: #eceef1;
+    --muted-foreground: #5b6270;
+    --accent: #e6e8ec;
+    --accent-foreground: #16181d;
+    --destructive: #dc2626;
+    --destructive-foreground: #ffffff;
+    --warning: #ffc93c;
+    --warning-foreground: #16181d;
+    --success: #16a34a;
+    --border: #d5d9e0;
+    --input: #c9ced6;
+    --ring: #ff6b1a;
+    --chart-1: #ff6b1a;
+    --chart-2: #2a2f38;
+    --chart-3: #ffc93c;
+    --chart-4: #22c55e;
+    --chart-5: #a855f7;
+    --radius: 0.5rem;
+    --sidebar: #16181d;
+    --sidebar-foreground: #e5e7eb;
+    --sidebar-primary: #ff6b1a;
+    --sidebar-primary-foreground: #16181d;
+    --sidebar-accent: #2a2f38;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #3a404b;
+    --sidebar-ring: #ff6b1a;
 }
 
 .dark {
-    --background: oklch(0.145 0 0);
-    --foreground: oklch(0.985 0 0);
-    --card: oklch(0.145 0 0);
-    --card-foreground: oklch(0.985 0 0);
-    --popover: oklch(0.145 0 0);
-    --popover-foreground: oklch(0.985 0 0);
-    --primary: oklch(0.985 0 0);
-    --primary-foreground: oklch(0.205 0 0);
-    --secondary: oklch(0.269 0 0);
-    --secondary-foreground: oklch(0.985 0 0);
-    --muted: oklch(0.269 0 0);
-    --muted-foreground: oklch(0.708 0 0);
-    --accent: oklch(0.269 0 0);
-    --accent-foreground: oklch(0.985 0 0);
-    --destructive: oklch(0.396 0.141 25.723);
-    --destructive-foreground: oklch(0.637 0.237 25.331);
-    --border: oklch(0.269 0 0);
-    --input: oklch(0.269 0 0);
-    --ring: oklch(0.439 0 0);
-    --chart-1: oklch(0.488 0.243 264.376);
-    --chart-2: oklch(0.696 0.17 162.48);
-    --chart-3: oklch(0.769 0.188 70.08);
-    --chart-4: oklch(0.627 0.265 303.9);
-    --chart-5: oklch(0.645 0.246 16.439);
-    --sidebar: oklch(0.205 0 0);
-    --sidebar-foreground: oklch(0.985 0 0);
-    --sidebar-primary: oklch(0.985 0 0);
-    --sidebar-primary-foreground: oklch(0.985 0 0);
-    --sidebar-accent: oklch(0.269 0 0);
-    --sidebar-accent-foreground: oklch(0.985 0 0);
-    --sidebar-border: oklch(0.269 0 0);
-    --sidebar-ring: oklch(0.439 0 0);
+    --background: #16181d;
+    --foreground: #eef0f3;
+    --card: #20242b;
+    --card-foreground: #eef0f3;
+    --popover: #20242b;
+    --popover-foreground: #eef0f3;
+    --primary: #ff6b1a;
+    --primary-foreground: #16181d;
+    --secondary: #2a2f38;
+    --secondary-foreground: #eef0f3;
+    --muted: #2a2f38;
+    --muted-foreground: #a4abb8;
+    --accent: #323844;
+    --accent-foreground: #ffffff;
+    --destructive: #ef4444;
+    --destructive-foreground: #ffffff;
+    --warning: #ffc93c;
+    --warning-foreground: #16181d;
+    --success: #22c55e;
+    --border: #3a404b;
+    --input: #464d5a;
+    --ring: #ff6b1a;
+    --chart-1: #ff6b1a;
+    --chart-2: #94a3b8;
+    --chart-3: #ffc93c;
+    --chart-4: #22c55e;
+    --chart-5: #a855f7;
+    --sidebar: #111317;
+    --sidebar-foreground: #e5e7eb;
+    --sidebar-primary: #ff6b1a;
+    --sidebar-primary-foreground: #16181d;
+    --sidebar-accent: #2a2f38;
+    --sidebar-accent-foreground: #ffffff;
+    --sidebar-border: #3a404b;
+    --sidebar-ring: #ff6b1a;
 }
 
 @layer base {
@@ -139,5 +170,45 @@
 
     body {
         @apply bg-background text-foreground;
+    }
+
+    :focus-visible {
+        outline: 2px solid var(--ring);
+        outline-offset: 2px;
+    }
+}
+
+@layer utilities {
+    /* Speedometer / livery headings and big numbers */
+    .font-display {
+        font-family: var(--font-display);
+        text-transform: uppercase;
+        letter-spacing: 0.03em;
+    }
+
+    .tabular {
+        font-variant-numeric: tabular-nums;
+    }
+
+    /* Very low-contrast diamond plate for the header */
+    .diamond-plate {
+        background-color: var(--color-asphalt);
+        background-image:
+            repeating-linear-gradient(45deg, rgb(255 255 255 / 0.03) 0 2px, transparent 2px 10px),
+            repeating-linear-gradient(-45deg, rgb(255 255 255 / 0.025) 0 2px, transparent 2px 10px);
+    }
+
+    /* Thin diagonal racing stripe accent */
+    .racing-stripe {
+        background-image: repeating-linear-gradient(-60deg, transparent 0 10px, rgb(255 255 255 / 0.14) 10px 13px);
+    }
+
+    /* Checkered / tire-tread divider, used sparingly */
+    .tread-divider {
+        height: 8px;
+        background:
+            repeating-linear-gradient(90deg, currentColor 0 8px, transparent 8px 16px) top / 100% 50% no-repeat,
+            repeating-linear-gradient(90deg, transparent 0 8px, currentColor 8px 16px) bottom / 100% 50% no-repeat;
+        opacity: 0.15;
     }
 }

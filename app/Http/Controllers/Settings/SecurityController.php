@@ -4,10 +4,11 @@ namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Settings\PasswordUpdateRequest;
-use Illuminate\Http\RedirectResponse;
+use App\Support\HomeRedirect;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\Response as HttpResponse;
 
 class SecurityController extends Controller
 {
@@ -21,7 +22,7 @@ class SecurityController extends Controller
         ]);
     }
 
-    public function update(PasswordUpdateRequest $request): RedirectResponse
+    public function update(PasswordUpdateRequest $request): HttpResponse
     {
         $user = $request->user();
         $wasForced = $user->must_change_password;
@@ -33,8 +34,12 @@ class SecurityController extends Controller
 
         activity('User')->causedBy($user)->performedOn($user)->event('password_changed')->log('Password changed');
 
-        return $wasForced
-            ? redirect($user->role->homePath())->with('success', 'Password updated. Welcome!')
-            : back()->with('success', 'Password updated.');
+        if ($wasForced) {
+            $request->session()->flash('success', 'Password updated. Welcome!');
+
+            return HomeRedirect::home($request, $user);
+        }
+
+        return back()->with('success', 'Password updated.');
     }
 }

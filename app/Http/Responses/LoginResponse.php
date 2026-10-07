@@ -2,6 +2,7 @@
 
 namespace App\Http\Responses;
 
+use App\Support\HomeRedirect;
 use Illuminate\Http\JsonResponse;
 use Laravel\Fortify\Contracts\LoginResponse as LoginResponseContract;
 use Symfony\Component\HttpFoundation\Response;
@@ -18,6 +19,6 @@ class LoginResponse implements LoginResponseContract
             return new JsonResponse(['two_factor' => false]);
         }
 
-        return redirect()->intended($request->user()->role->homePath());
+        return HomeRedirect::home($request, $request->user(), intended: true);
     }
 }

@@ -119,6 +119,14 @@ class OrderItem extends Model
         return round((float) $this->line_total - (float) $this->discount_share, 2);
     }
 
+    /**
+     * What the customer paid for this line, VAT included (see Order::paidRatio()).
+     */
+    public function paidAmount(float $paidRatio): float
+    {
+        return round($this->netAmount() * $paidRatio, 2);
+    }
+
     public function returnableQty(): float
     {
         return round((float) $this->qty - (float) $this->qty_returned, 2);

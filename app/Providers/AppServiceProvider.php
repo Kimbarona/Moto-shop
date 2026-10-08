@@ -9,13 +9,16 @@ use App\Models\Category;
 use App\Models\Customer;
 use App\Models\CustomerMotorcycle;
 use App\Models\DefectiveStock;
+use App\Models\Expense;
 use App\Models\ExpenseCategory;
 use App\Models\Mechanic;
 use App\Models\MotorcycleMake;
 use App\Models\MotorcycleModel;
 use App\Models\Order;
+use App\Models\Payment;
 use App\Models\PaymentMethod;
 use App\Models\Product;
+use App\Models\SalesReturn;
 use App\Models\Service;
 use App\Models\ServicePackage;
 use App\Models\StockAdjustment;
@@ -28,9 +31,11 @@ use App\Models\User;
 use App\Policies\ActivityPolicy;
 use App\Policies\AdminMasterDataPolicy;
 use App\Policies\DefectiveStockPolicy;
+use App\Policies\ExpensePolicy;
 use App\Policies\InventoryDocumentPolicy;
 use App\Policies\MasterDataPolicy;
 use App\Policies\OrderPolicy;
+use App\Policies\SalesRecordPolicy;
 use App\Policies\StockMovementPolicy;
 use App\Settings\SecuritySettings;
 use Carbon\CarbonImmutable;
@@ -121,6 +126,9 @@ class AppServiceProvider extends ServiceProvider
         Gate::policy(DefectiveStock::class, DefectiveStockPolicy::class);
         Gate::policy(StockMovement::class, StockMovementPolicy::class);
         Gate::policy(Order::class, OrderPolicy::class);
+        Gate::policy(Payment::class, SalesRecordPolicy::class);
+        Gate::policy(SalesReturn::class, SalesRecordPolicy::class);
+        Gate::policy(Expense::class, ExpensePolicy::class);
 
         $roles = fn (Role ...$roles) => fn (User $user) => $user->is_active && $user->hasRole(...$roles);
 

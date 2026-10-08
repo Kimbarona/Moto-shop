@@ -138,8 +138,9 @@ class ReturnController extends Controller
             ] : null,
             'total' => (float) $order->total,
             'refund_status' => $order->refund_status->value,
-            'items' => $order->items->map(function (OrderItem $item) {
+            'items' => $order->items->map(function (OrderItem $item) use ($order) {
                 $returnedAmount = round((float) $item->returnItems->sum('amount'), 2);
+                $paid = $item->paidAmount($order->paidRatio());
 
                 return [
                     'id' => $item->id,
@@ -151,12 +152,12 @@ class ReturnController extends Controller
                     'qty' => (float) $item->qty,
                     'qty_returned' => (float) $item->qty_returned,
                     'returnable' => max(0.0, $item->returnableQty()),
-                    'net' => $item->netAmount(),
+                    'net' => $paid,
                     'returned_amount' => $returnedAmount,
-                    // Per-unit price actually paid (after line and order discounts).
-                    'unit_net' => (float) $item->qty > 0 ? round($item->netAmount() / (float) $item->qty, 4) : 0,
+                    // Per-unit price actually paid (after discounts, with VAT).
+                    'unit_net' => (float) $item->qty > 0 ? round($paid / (float) $item->qty, 4) : 0,
                     // What is left to refund on this line (the last return takes exactly this).
-                    'remaining_amount' => round($item->netAmount() - $returnedAmount, 2),
+                    'remaining_amount' => round($paid - $returnedAmount, 2),
                 ];
             })->values()->all(),
             'returns' => $order->returns->map(fn (SalesReturn $return) => [

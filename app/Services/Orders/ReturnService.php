@@ -35,7 +35,7 @@ use Illuminate\Validation\ValidationException;
  *    credit for a new walk-in sale (PaymentService::checkout with exchange_return_id)
  *
  * Each line's amount is what the customer actually paid for that qty (after line and
- * order discounts). The last return of a line takes whatever is left, so returning a
+ * order discounts, VAT included when VAT is added on top of prices). The last return of a line takes whatever is left, so returning a
  * line in parts never refunds more (or less) than it was sold for.
  */
 class ReturnService
@@ -109,6 +109,7 @@ class ReturnService
             ]);
 
             $total = 0.0;
+            $ratio = $order->paidRatio();
 
             foreach ($lines as $line) {
                 /** @var OrderItem $item */
@@ -117,9 +118,10 @@ class ReturnService
                 $isLast = abs($item->returnableQty() - $qty) < 0.005;
                 $previous = $item->returnItems()->get();
 
+                $paid = $item->paidAmount($ratio);
                 $amount = $isLast
-                    ? round($item->netAmount() - (float) $previous->sum('amount'), 2)
-                    : round($item->netAmount() * $qty / (float) $item->qty, 2);
+                    ? round($paid - (float) $previous->sum('amount'), 2)
+                    : round($paid * $qty / (float) $item->qty, 2);
 
                 $commission = $item->isLabor()
                     ? ($isLast

@@ -179,6 +179,27 @@ class Order extends Model
     }
 
     /**
+     * Customer-paid amount per peso of line net (line_total − discount_share). 1 when prices
+     * include VAT or there is no VAT; 1.12 when 12% VAT is added on top of the prices.
+     */
+    public function paidRatio(): float
+    {
+        $nets = round((float) $this->subtotal - (float) $this->discount_total, 2);
+
+        return $nets > 0 ? (float) $this->total / $nets : 1.0;
+    }
+
+    /**
+     * Sales-without-VAT per peso of line net (for profit: revenue never includes VAT).
+     */
+    public function exVatRatio(): float
+    {
+        $nets = round((float) $this->subtotal - (float) $this->discount_total, 2);
+
+        return $nets > 0 ? ((float) $this->total - (float) $this->vat_amount) / $nets : 1.0;
+    }
+
+    /**
      * Can items still be returned (paid, and not everything returned yet)?
      */
     public function isReturnable(): bool

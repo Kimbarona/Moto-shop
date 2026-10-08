@@ -34,6 +34,13 @@ class Expense extends Model
         ];
     }
 
+    protected static function booted(): void
+    {
+        static::creating(function (Expense $expense) {
+            $expense->created_by ??= auth()->id();
+        });
+    }
+
     public function category(): BelongsTo
     {
         return $this->belongsTo(ExpenseCategory::class, 'expense_category_id');

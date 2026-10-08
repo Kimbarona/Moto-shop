@@ -99,8 +99,9 @@ class OrderResource extends JsonResource
             'total' => (float) $this->total,
             'return_credit' => (float) $this->return_credit,
             'amount_due' => $this->amountDue(),
+            // Gross profit: sales without VAT less the cost snapshot of the parts.
             'profit' => $this->when($viewCost && $this->isPaid(), fn () => round($items->sum(
-                fn (OrderItem $item) => $item->netAmount() - ($item->isPart() ? (float) $item->unit_cost * (float) $item->qty : 0),
+                fn (OrderItem $item) => $item->netAmount() * $this->resource->exVatRatio() - ($item->isPart() ? (float) $item->unit_cost * (float) $item->qty : 0),
             ), 2)),
             'payments' => $this->payments->map(fn (Payment $p) => [
                 'id' => $p->id,

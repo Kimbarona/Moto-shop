@@ -98,3 +98,48 @@
 .fi-fo-text-input input {
     font-variant-numeric: tabular-nums;
 }
+
+/*
+ | Primary buttons: solid Racing Orange with Asphalt text (6.6:1 contrast) and the same
+ | thin diagonal racing stripe as the POS. Filament would otherwise pick a paler shade.
+ */
+.fi-btn.fi-color-primary:not(.fi-outlined) {
+    --bg: var(--pit-orange) !important;
+    --hover-bg: #ff8236 !important;
+    --dark-bg: var(--pit-orange) !important;
+    --dark-hover-bg: #ff8236 !important;
+    --text: var(--pit-asphalt) !important;
+    --hover-text: var(--pit-asphalt) !important;
+    --dark-text: var(--pit-asphalt) !important;
+    --dark-hover-text: var(--pit-asphalt) !important;
+    background-image: repeating-linear-gradient(-60deg, transparent 0 14px, rgb(255 255 255 / 0.14) 14px 17px);
+    font-weight: 700;
+}
+
+/* A thin orange line under the top bar ties it to the sidebar's active stripe. */
+.fi-topbar {
+    box-shadow: inset 0 -2px 0 var(--pit-orange);
+}
+
+/* Wrapped text columns (names, descriptions) keep a readable width in wide tables. */
+.fi-ta-text.fi-wrapped:not(.fi-ta-text-has-badges) {
+    min-width: 13rem;
+}
+
+/* Checkered "finish line" over empty states, like the POS. */
+.fi-ta-empty-state-content::before {
+    content: '';
+    display: block;
+    width: 6rem;
+    height: 0.5rem;
+    margin: 0 auto 1rem;
+    opacity: 0.35;
+    background-image: repeating-conic-gradient(currentColor 0 25%, transparent 0 50%);
+    background-size: 0.5rem 0.5rem;
+}
+
+/* Status badges read like decals. */
+.fi-badge {
+    font-variant-numeric: tabular-nums;
+    letter-spacing: 0.01em;
+}

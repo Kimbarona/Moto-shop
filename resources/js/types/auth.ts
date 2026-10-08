@@ -1,9 +1,5 @@
 export type Role =
-    | 'super_admin'
-    | 'admin'
-    | 'cashier'
-    | 'mechanic'
-    | 'inventory_clerk';
+    'super_admin' | 'admin' | 'cashier' | 'mechanic' | 'inventory_clerk';
 
 export type User = {
     id: number;

@@ -184,9 +184,9 @@ class ProductResource extends Resource
                 TrashedFilter::make(),
             ])
             ->recordActions([
-                EditAction::make(),
-                DeleteAction::make()->label('Archive'),
-                RestoreAction::make(),
+                EditAction::make()->iconButton()->tooltip('Edit'),
+                DeleteAction::make()->label('Archive')->iconButton()->icon(Heroicon::OutlinedArchiveBox)->tooltip('Archive'),
+                RestoreAction::make()->iconButton()->tooltip('Restore'),
             ]);
     }
 

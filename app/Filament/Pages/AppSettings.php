@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Enums\PaperSize;
 use App\Models\PaymentMethod;
+use App\Services\Backup\BackupService;
 use App\Services\Numbering\SequenceService;
 use App\Settings\AppearanceSettings;
 use App\Settings\InventorySettings;
@@ -14,6 +15,7 @@ use App\Settings\ShopSettings;
 use App\Settings\SlipSettings;
 use App\Settings\TaxSettings;
 use BackedEnum;
+use Carbon\CarbonImmutable;
 use Filament\Actions\Action;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -34,7 +36,9 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use RuntimeException;
 use Spatie\LaravelSettings\Settings;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 use UnitEnum;
 
 /**
@@ -183,6 +187,38 @@ class AppSettings extends Page
                             Select::make('appearance.pos_theme')->label('POS default theme')
                                 ->options(['dark' => 'Dark', 'light' => 'Light', 'system' => 'System default'])->required(),
                         ]),
+
+                        Tab::make('Backup')->icon(Heroicon::OutlinedCircleStack)->columns(2)->schema([
+                            TextEntry::make('backup_last')->label('Last backup')
+                                ->state(fn () => ($at = app(BackupService::class)->lastBackupAt())
+                                    ? CarbonImmutable::parse($at)->timezone(config('app.timezone'))->format('M d, Y h:i A')
+                                    : 'Never')
+                                ->weight('bold')
+                                ->color(fn () => $this->backupIsStale() ? 'danger' : null)
+                                ->helperText(fn () => $this->backupIsStale() ? 'No backup in the last 24 hours. Back up before closing the shop.' : null),
+                            TextEntry::make('backup_files')->label('Stored on this computer')
+                                ->state(fn () => app(BackupService::class)->backups()->take(5)
+                                    ->map(fn (array $b) => $b['name'].' · '.$b['size_label'])
+                                    ->all() ?: ['None yet'])
+                                ->listWithLineBreaks()
+                                ->helperText('Folder: storage/app/private/'.config('backup.backup.name').'. Copy the downloaded zip to a USB drive or cloud folder too.'),
+                            Actions::make([
+                                Action::make('backupNow')
+                                    ->label('Backup now')
+                                    ->icon(Heroicon::OutlinedArrowDownTray)
+                                    ->requiresConfirmation()
+                                    ->modalHeading('Back up the database?')
+                                    ->modalDescription('Makes a full copy of the database (mysqldump) and downloads it as a zip. Takes a few seconds.')
+                                    ->modalSubmitActionLabel('Back up and download')
+                                    ->action(fn () => $this->backupNow()),
+                                Action::make('downloadLatest')
+                                    ->label('Download latest')
+                                    ->icon(Heroicon::OutlinedDocumentArrowDown)
+                                    ->color('gray')
+                                    ->visible(fn () => app(BackupService::class)->backups()->isNotEmpty())
+                                    ->action(fn () => $this->downloadLatestBackup()),
+                            ])->columnSpanFull()->visible(fn () => $this->canEdit()),
+                        ]),
                     ]),
             ]);
     }
@@ -249,6 +285,46 @@ class AppSettings extends Page
         $this->form->fill($this->currentValues());
 
         Notification::make()->success()->title('Settings saved')->send();
+    }
+
+    /**
+     * Dumps the database and sends the zip to the browser (Super Admin only).
+     */
+    public function backupNow(): ?StreamedResponse
+    {
+        abort_unless($this->canEdit(), 403);
+
+        $backups = app(BackupService::class);
+
+        try {
+            $path = $backups->run(auth()->user());
+        } catch (RuntimeException $e) {
+            report($e);
+            Notification::make()->danger()->title('Backup failed')->body($e->getMessage())->persistent()->send();
+
+            return null;
+        }
+
+        Notification::make()->success()->title('Backup saved')->body(basename($path))->send();
+
+        return $backups->disk()->download($path);
+    }
+
+    public function downloadLatestBackup(): ?StreamedResponse
+    {
+        abort_unless($this->canEdit(), 403);
+
+        $backups = app(BackupService::class);
+        $latest = $backups->backups()->first();
+
+        return $latest ? $backups->disk()->download($latest['path']) : null;
+    }
+
+    private function backupIsStale(): bool
+    {
+        $at = app(BackupService::class)->lastBackupAt();
+
+        return $at === null || CarbonImmutable::parse($at)->lt(now()->subDay());
     }
 
     /**

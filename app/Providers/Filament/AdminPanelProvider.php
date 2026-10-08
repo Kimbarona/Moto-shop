@@ -40,6 +40,7 @@ class AdminPanelProvider extends PanelProvider
             ->brandName(fn () => rescue(fn () => app(ShopSettings::class)->shop_name, config('app.name'), report: false))
             ->brandLogo(fn () => rescue(fn () => app(ShopSettings::class)->logo ? asset('storage/'.app(ShopSettings::class)->logo) : null, null, report: false))
             ->brandLogoHeight('2.25rem')
+            ->favicon(asset('favicon.svg'))
             ->font('Barlow', provider: LocalFontProvider::class)
             ->colors([
                 'primary' => Color::hex('#FF6B1A'), // Racing Orange
@@ -48,7 +49,21 @@ class AdminPanelProvider extends PanelProvider
                 'danger' => Color::Red,
                 'info' => Color::Sky,
                 'purple' => Color::Purple, // refunds
-                'gray' => Color::Slate,
+                // Chrome / steel greys ending in Gunmetal #2A2F38 and Asphalt #16181D, so
+                // dark mode matches the POS instead of Tailwind's blue-ish slate.
+                'gray' => [
+                    50 => '#f4f5f7',
+                    100 => '#e8eaee',
+                    200 => '#d3d6dd',
+                    300 => '#b2b7c1',
+                    400 => '#8b919d',
+                    500 => '#6b717d',
+                    600 => '#4f5560',
+                    700 => '#3a404b',
+                    800 => '#2a2f38',
+                    900 => '#1f232a',
+                    950 => '#16181d',
+                ],
             ])
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->darkMode()

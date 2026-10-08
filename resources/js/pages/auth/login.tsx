@@ -21,18 +21,10 @@ type Props = {
 export default function Login({ status, shop }: Props) {
     return (
         <AuthLayout
-            title={shop.name}
-            description="Sign in with the account your manager gave you"
+            title="Sign in"
+            description={`Use the account your manager gave you to open ${shop.name}.`}
         >
             <Head title="Log in" />
-
-            {shop.logo && (
-                <img
-                    src={shop.logo}
-                    alt={shop.name}
-                    className="mx-auto -mt-2 mb-2 h-16 w-auto object-contain"
-                />
-            )}
 
             <Form
                 {...store.form()}
